@@ -30,6 +30,8 @@ This module depends on the "tedious" Node.js module.
 
 ## Simple example
 
+More details on configuring the connection can be found in the [Tedious documentation](https://tediousjs.github.io/tedious/api-connection.html#function_newConnection).
+
 ```
   // Import the module:
   const cannedSql=require('./canned-sql2.js');
