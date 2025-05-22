@@ -61,20 +61,43 @@ async function query(connection, statement, parameters) {
     return new Promise((resolve, reject) => {
         const resultSets = [];
         let currentResultSet = [];
-        
+        let errorRaised = false;
+
         const request = new Request(statement, (err) => {
             if (err) {
-                resolve({
-                    success: false,
-                    error: {
-                        message: err.message,
-                        code: err.code,
-                        state: err.state,
-                        class: err.class,
-                        lineNumber: err.lineNumber,
-                        serverName: err.serverName
-                    }
-                });
+                errorRaised = true;
+
+                // In some cases, we get an array of errors[]. Other times, we get
+                // a single error object (and no message). Tedious moves in mysterious
+                // ways. *sigh*
+
+                if (err.errors) {
+                    resolve({
+                        success: false,
+                        error: {
+                            message: err.errors[0].message,
+                            code: err.errors[0].code,
+                            state: err.errors[0].state,
+                            class: err.errors[0].class,
+                            lineNumber: err.errors[0].lineNumber,
+                            serverName: err.errors[0].serverName
+                        }
+                    });
+                }
+                else
+                {
+                    resolve({
+                        success: false,
+                        error: {
+                            message: err.message,
+                            code: err.code,
+                            state: err.state,
+                            class: err.class,
+                            lineNumber: err.lineNumber,
+                            serverName: err.serverName
+                        }
+                    });
+                }
             }
         });
 
@@ -109,15 +132,19 @@ async function query(connection, statement, parameters) {
                 resultSets.push([...currentResultSet]);
             }
 
-            // Resolve: return success and the resultSets array:
-            resolve({
-                success: true,
-                results: resultSets /* resultSets.length === 1 ? resultSets[0] : resultSets */
-            });
+            if (!errorRaised) {
+                // Resolve: return success and the resultSets array:
+                resolve({
+                    success: true,
+                    results: resultSets
+                });
+            }
         });
 
         // If something went wrong:
         request.on('error', (error) => {
+            errorRaised = true;
+
             // We'll still resolve the Promise, in order to not trigger any errors,
             // but we'll set success:false, and include a description of the error.
             resolve({
@@ -279,4 +306,3 @@ exports.image = TYPES.Image;
 exports.uniqueidentifier = TYPES.UniqueIdentifier; // Returned as hexadecimal string
 exports.sql_variant = TYPES.Variant;
 exports.xml = TYPES.Xml;
-
